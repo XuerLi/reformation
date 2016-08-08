@@ -27,7 +27,8 @@ revise(N) :-
 		FullRepairs),										% get all needed repairs
 	quicksort(FullRepairs,RepairsSorted),
 	eliminateDuplicates(RepairsSorted,SetOfRepairs),		% sort and remove duplicate repairs
-	member(RepairSorted,SetOfRepairs),						% output each repair
+	% output each repair
+	member(RepairSorted,SetOfRepairs),						% ** unify every sigle repair in the list of repairs (SetOfRepairs) to RepairSorrted
 	RepairSorted = ((Nf,Nt),(Repairs,Revised,N)),
 
 	findall(C,member((C,[]),Revised),Cs),
@@ -42,6 +43,11 @@ revise(N) :-
 revise(N) :- \+(found), N1 is N+1, revise(N1).				% No repairs found with minimal N1 repairs -> try N1+1
 revise(_) :- retract(found),fail.							% Keep track if a repair is found
 
+/*
+	eliminateDuplicates: eliminate all duplicate repairs
+	Input: 	Reps
+	Output:	Set
+*/
 % eliminate all duplicate repairs
 eliminateDuplicates(Reps,Set) :-
 	findall( ((Nf,Nt),(RepairsS,RevisedS,N)), 				% find a sorted list, then apply removeDups
@@ -149,7 +155,10 @@ nInconsistencies2(Ont,ProofsIn,ProofsOut) :-
 nInconsistencies2(_,Proofs,Proofs) :- !.
 %	vnl,vprint('Inferred Ontology').
 
-
+/*
+costRepairs (R, C): calculate the cost C by split R into members one by one.
+costRepair （_,_,C）:C is 0 when (R,_) is a member of Rs, otherwise C is 1.
+*/
 % if a name was already split, then additional splits to the same name are free
 costRepairs([],0) :- !.
 costRepairs([R|Rs],C) :- costRepair(R,Rs,C1), costRepairs(Rs,C2), C is C1 + C2.

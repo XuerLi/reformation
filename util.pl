@@ -211,10 +211,13 @@ gensym(In,Out) :-
 position(Exp,Exp,[]).               % The current expression is at the empty position
 
 % Step Case
-
-position(Sub,[_|Args],[I|Posn]) :-  % Otherwise, get the args of a compound expression
-    append(Front,[Arg|_],Args),     % Use append backwards to identify each argument in turn
-    length(Front,I1), I is I1+1,    % Work out what its position is
+/*  Otherwise, get the args of a compound expression;
+    untill get the Arg equals Sub then the position(Sub,Arg,Posn) equals position(Exp,Exp,[]).
+    Finish recursive, get the position I of Sub in Args
+*/
+position(Sub,[_|Args],[I|Posn]) :-  % skip the first element which is the function name.
+    append(Front,[Arg|_],Args),     % Use append backwards to identify each argument Arg in turn
+    length(Front,I1), I is I1+1,    % Work out I :what position of Arg in Args is
     position(Sub,Arg,Posn).         % Recurse on each argument
 
 
@@ -295,3 +298,23 @@ nth1(Idx,[_|List],X) :-
 
 is_list([_|_]).
 is_list([]).
+
+/*
+Function name: getfunction: find the function named F in Df1.
+Argument1:    the name of target function
+Argument2:    the original function Df1
+Argument3[A,B]: A is the list of function named F in Df1, 
+				B is the position of A in Df1
+*/
+% Argument2 itself is the function named F.
+getfunction(F,[F|Args],[[F|Args],0]).
+
+% get the function named F in Df1. Notice: every function is a list term.
+% only one F in Df1
+getfunction(F,Df1,[Tf1,PosI]):-
+  member(Tf1,Df1),                 % find the deeper function Df2 in Df1 which is always started with [
+  is_list(Tf1),
+  [F|_] = Tf1,
+  append(Front,[Tf1|_],Df1),
+  length(Front,I), PosI is I+1.  % Work out I :what position of Arg in Args is
+

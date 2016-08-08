@@ -14,17 +14,21 @@ repairs([],U,U).
 % Step case: apply each repair in turn.
 repairs([H|T],UIn,UOut) :-
     repair(H,UIn,UMid), repairRepairs(H,T,TOut), repairs(TOut,UMid,UOut).          % repair does one repair to the head, then recurse on the tail. 
+repairs([merge(F1,F2)|T],UIn,UOut):-
+    repairs([merge(F2,F1)|T],UIn,UOut),!.     % ******* Use F1 instead F2.
 
 repairRepairs(_,[],[]).
 repairRepairs(R, [H|T], [HOut|TOut]) :-
     repairRepair(R,H,HOut), repairRepairs(R,T,TOut).
 
 repairRepair(merge(F,G),remove_n(F,N,L), remove_n(G,N,L)) :- !.   % TODO: Write out all possible interactions between repairs
+repairRepair(merge(F,G),add_n(F,N,L), add_n(G,N,L)) :- !.   % *******: Write out all possible interactions between repairs
+repairRepair(merge(F,G),remove_func(F,N,L), remove_func(G,N,L)) :- !.   % *******: Write out all possible interactions between repairs
 repairRepair(_,U,U).
 
 %%  repair(R,UIn,UOut): apply one repair.
 
-% merge two functors
+% merge two functors from F1 to F2
 repair(merge(F1,F2),[F1|Args]=RHS,[F2|Args]=RHS) :- !. % merge functors can happen in 4 ways.
 repair(merge(F1,F2),LHS=[F1|Args],LHS=[F2|Args]).
 repair(merge(F1,F2),[F2|Args]=RHS,[F1|Args]=RHS). 
@@ -82,6 +86,29 @@ repair(remove_ith(F,I),vble(X)=E,vble(X)=EI) :- !,
     append(Front,[_|Back],Args),                     % and append to find Back I+1 to N args
     append(Front,Back,ArgsI),                        % Append Front to Back thus snipping out Ith arg
     replace(P,E,[F|ArgsI],EI).                       % Replace old subterm with new at position P to get EI
+
+% ***remove ith argument of deeper function Tf2
+repair(remove_ith(F,I),Df1=Df2,Df1=EI2) :- !,
+    print(Df2),
+    getfunction(F,Df2,[Tf2,Posiiton]),                % Find position of [F|Args] in Df2
+    print('repair(remove_ith(F,I),Df1=Df2,Df1=EI2)'),
+    repair(remove_ith(F,I),vble(_)=Tf2,vble(_)=EI),
+    I1 is Posiiton-1, length(Front,I1),                     % Use length backwards to find Front I-1 args
+    append(Front,[_|Back],Df2),                     % and append to find Back I+1 to N args
+    append(Front,EI,ArgsI),                        % Append Front to EI(the changed function)
+    append(ArgsI,Back,EI2).                       % Append EI(the changed function) to Back thus get the completed theory.
+
+% ***remove function F，and replace it with a vble(c).
+repair(remove_func(F),X=[F|_],X=vble(c)) :- !.
+
+% ***remove function F，and replace it with a vble(c). When F is an element of E:
+repair(remove_func(F),X=E,X=EI) :- !,
+    getfunction(F,E,[Tf2,Posiiton]),!,                % Find position of [F|_] in E
+      I1 is Posiiton-1, length(Front,I1),             % Use length backwards to find Front I-1 args
+      append(Front,[Tf2|Back],E),                     % and append to find Back I+1 to N args
+      append(Front,[vble(c)],Args1),                  % replace F with vble(c)
+      append(Args1,Back,EI).                          % repaired theory EI
+
 
 % add X as additional argument to F
 repair(insert_var(F,X),vble(X)=[F|Args],vble(X)=[F|ArgsX]) :- !,

@@ -16,6 +16,15 @@ diagnose(success,fail,[F1|Args1]=[F2|Args2],Rs) :- !,
     same_arity([F1|Args1],[F2|Args2],Rs2),  % Equate arities if they are different
     append(Rs1,Rs2,Rs).                     % Conjoin these repairs
 
+% Case *** repairs: remove F if there is no other functions
+diagnose(success,fail,vble(_)=[F|Args],Rs) :-
+    \+ bagof(FuncName,
+          (getfunction(FuncName,[F|Args],[_,_]),
+          FuncName \== F ),
+          _),!,
+    remove_func(F,[F|Args],Rs).        % Suggest repair Rs that removes an argument that X occurs in
+
+
 % Case VCf repairs: remove occurrences of X
 diagnose(success,fail,vble(X)=[F|Args],Rs) :- !, 
     position(vble(X),[F|Args],Posn),     % Find position that X occurs at
@@ -60,11 +69,31 @@ same_arity2(F1,L1,F2,L2,Rs) :-
     L2<L1, !, same_arity3(F2,L2,F1,L1,right,Rs). % if smallest on right then switch
 
 
-% Return just one of the possible repairs
+% Return just one of the possible repairs kind for repair.pl do further process.
+/*
+  same_arity3: Return just one of the possible repairs type
+    F1: the function with shorter arities
+    L1: the lengh of shorter arities.
+    F2: the function with longer arities
+    L2: the lengh of longer arities.
+    Side: The position of the first input function of same_arity().
+    Rs: the repair kind ([remove_n(F2,N,Side)] or [add_n(F1,N,Other)])
+*/
 same_arity3(F1,L1,F2,L2,Side,Rs) :-
     N is L2-L1,                                            % N is number of args to remove/add
     switch(Side,Other),                                    % Calculate the other side
     disjoin([remove_n(F2,N,Side)],[add_n(F1,N,Other)],Rs). % Either remove N from bigger or add N to smaller
+
+% Suggest repair Rs that removes a function named F
+remove_func(F,[F|_],[remove_func(F)]).        
+
+remove_func(F,[_|Args],Rs) :-  				  % Recurse on deeper arguments
+    getfunction(F,Args,[Tf2,Posiiton]),       % Find position of [F|Args] in Args
+    []\==Tf2,                      			  % Arg is the Ith argument
+    I1 is Posiiton-1, length(Front,I1),       % Front will be Posiiton I-1 args
+    append(Front,[_|Rest],Args),     		  % Rest is remain arguments in Args
+    remove_func(F,Rest,Rs).         		  % Recurse on Arg
+
 
 %% remove_occ(Posn,Exp,Rs): remove an occurence of variable X that occurs at Posn from Exp to give repairs Rs
 remove_occ([I|_],[F|_],[remove_ith(F,I)]).  % Remove the Ith argument of F

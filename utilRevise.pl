@@ -48,10 +48,10 @@ printAll([C|Cs]) :-
 % gives the resulting clause assuming the resolution was successful.
 resultingClause(C1,I1,C2,I2,NewC) :-
 	I11 is I1-1, I21 is I2-1,
-	append(B1,[_|E1],C1), length(B1,I11),
-	append(B2,[_|E2],C2), length(B2,I21),
-	append(B1,B2,B),
-	append(E1,E2,E),
+	append(B1,[_|E1],C1), length(B1,I11),  % B1 is the list of first I11 elements of C1
+	append(B2,[_|E2],C2), length(B2,I21),  % B2 is the list of first I21 elements of C1
+	append(B1,B2,B),  % the lengh of B is I11+I21 = I1 + I2 - 2
+	append(E1,E2,E),  % the lengh of E is LenghC1 + LenghC2 - I1 - I2
 	append(B,E,NewC), !.
 
 
