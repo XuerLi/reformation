@@ -16,7 +16,7 @@ reform(E1,E2,Sigma,W,FS,Rs) :-              % accept singleton even if not in li
     \+(is_list(E1)), !,
     reform([E1],E2,Sigma,W,FS,Rs).
 
-reform(E1,E2,Sigma,W,FS,Rs) :- 
+reform(E1,E2,Sigma,W,FS,Rs) :-
     \+(is_list(E2)), !,
     reform(E1,[E2],Sigma,W,FS,Rs).
 
@@ -30,6 +30,8 @@ reform(E1S,E2S,Sigma,W,FS,Rs) :-            % Internal format assumes E1 and E2 
 % reform3 converts to internal representation
 
 reform3(F1,F2,SigmaIn,SigmaOut,W,FS,Rs) :-
+    vnl, vprint('--------------------------------------- reform3 start '),
+
     pairwise(F1,F2,Ne),
     reform2(Ne,SigmaIn,SigmaOut,W,FS,Rs).
 
@@ -47,17 +49,21 @@ reform3(F1,F2,SigmaIn,SigmaOut,W,FS,Rs) :-
 % Base case (wanted failure)
 reform2([],SigmaIn,SigmaIn,fail,success,_) :-    % Fail if failure wanted, but base case is successful
     (refsuccess; assert(refsuccess)),            % Mark successful unification (assert only one fact)
-    !, fail.                                     % Failure wanted, but unification succeeds, so fail 
+    !, fail.                                     % Failure wanted, but unification succeeds, so fail
 
 % Base case (wanted success)
 reform2([],SigmaIn,SigmaIn,success,success,[]) :-   % When no more problems, succeed with empty substitution
     (refsuccess; assert(refsuccess)),               % Assert only one fact
-    !.                                  
+    !.
+% Base case (wanted success)
+reform2([Literal=Literal],SigmaIn,SigmaIn,success,success,[]) :-   % When no more problems, succeed with empty substitution
+    (refsuccess; assert(refsuccess)),               % Assert only one fact
+    !.
 
 % Case CC_s: success on two compound expressions. F1=F2 and length Arg1 and
 % length Arg2 the same.
 
-reform2([[F1|Args1]=[F2|Args2]|Old],SigmaIn,SigmaOut,W,FS,Rs) :- 
+reform2([[F1|Args1]=[F2|Args2]|Old],SigmaIn,SigmaOut,W,FS,Rs) :-
     F1==F2, length(Args1,L), length(Args2,L),       % If functors and arities agree
     pairwise(Args1,Args2,New),                      % Pair up corresponding subterms
     append(New,Old,Rest),                           % Add them to the Old problems
@@ -70,7 +76,7 @@ reform2([[F1|Args1]=[F2|Args2]|Old],SigmaIn,SigmaOut,W,FS,Rs) :-
 % Case CC_f: failure on two compound expressions. F1/=F2, or length Arg1 and
 % length Arg2 different.
 
-reform2([[F1|Args1]=[F2|Args2]|_],_,_,_,fail,_) :-              
+reform2([[F1|Args1]=[F2|Args2]|_],_,_,_,fail,_) :-
     (F1\==F2 ; length(Args1,L1), length(Args2,L2), L1\==L2),   % if functors or arities disagree
     retractall(refsuccess), fail.                              % mark failure for recursion
 
@@ -83,12 +89,12 @@ reform2([[F1|Args1]=[F2|Args2]|Rest],SigmaIn,SigmaOut,success,fail,Rs) :- % If f
     diagnose(success,fail,[F1|Args1]=[F2|Args2],Rs1),                     % Diagonose a repair
     repairs(Rs1,[F1|Args1]=[F2|Args2],U),                                 % Apply it
     reform2([U|Rest],SigmaIn,SigmaOut,success,_,Rs2),                     % Continue reformation with repaired problem
-    append(Rs1,Rs2,Rs).                                                   % Conjoin first repair with any more found. 
+    append(Rs1,Rs2,Rs).                                                   % Conjoin first repair with any more found.
 
-% Case VC: a variable vs a compound expression. 
+% Case VC: a variable vs a compound expression.
 
 % Switch expressions if in wrong order
-reform2([[F|Args]=vble(X)|Rest],SigmaIn,SigmaOut,W,FS,Rs) :- !,   
+reform2([[F|Args]=vble(X)|Rest],SigmaIn,SigmaOut,W,FS,Rs) :- !,
     reform2([vble(X)=[F|Args]|Rest],SigmaIn,SigmaOut,W,FS,Rs).     % Reorient problem to put variable first
 
 % Case VC_f: variable occurs in term E then fail
@@ -101,17 +107,17 @@ reform2([vble(X)=[F|Args]|Rest],SigmaIn,SigmaOut,success,fail,Rs) :-   % If fail
     diagnose(success,fail,vble(X)=[F|Args],Rs1),                       % Diagnose a repair
     repairs(Rs1,vble(X)=[F|Args],U),                                   % Apply it
     reform2([U|Rest],SigmaIn,SigmaOut,success,_,Rs2),                  % Continue reformation with repaired problem
-    append(Rs1,Rs2,Rs).                                                % Conjoin first repair with any more found. 
+    append(Rs1,Rs2,Rs).                                                % Conjoin first repair with any more found.
 
-% Case VC_s: variable does not occur in terms 
-reform2([vble(X)=[F|Args]|Rest],SigmaIn,SigmaOut,W,FS,Rs) :- 
+% Case VC_s: variable does not occur in terms
+reform2([vble(X)=[F|Args]|Rest],SigmaIn,SigmaOut,W,FS,Rs) :-
     \+ occurs(vble(X),[F|Args]),                              % If var does not occur in expression
-    (W=success,                                               % If unblocking, then permute to ensure minimal repair 
+    (W=success,                                               % If unblocking, then permute to ensure minimal repair
     containsDifferent(vble(X),[F|Args],Rest),                 % Check if more than one occurance of the same variable with different instantiation
     reform2(Rest,SigmaIn,SigmaMid,W,FS1,Rs1),                 % First reform rest
     subst(SigmaMid,[vble(X)=[F|Args]], NewCurr),              % Apply substitutions obtained
     reform2(NewCurr, SigmaMid, SigmaOut, W, FS2, Rs2),        % Followed by reforming the current
-    and(FS1,FS2,FS),                                          
+    and(FS1,FS2,FS),
     append(Rs1,Rs2,Rs),                                       % Append repairs, since unblocking
     \+(Rs=[]);                                                % If no repairs found, don't duplicate
     subst(vble(X)/[F|Args],Rest,NewRest),                     % Substitute expression for var in problems
@@ -130,7 +136,7 @@ reform2([vble(X)=vble(X)|Rest],SigmaIn,SigmaOut,W,FS,Rs) :-   % If two vars and 
     reform2(Rest,SigmaIn,SigmaOut,W,FS,Rs).                   % ignore them and carry on with the rest
 
 % Case VV/=: variables are different
-reform2([vble(X)=vble(Y)|Rest],SigmaIn,SigmaOut,W,FS,Rs) :-   
+reform2([vble(X)=vble(Y)|Rest],SigmaIn,SigmaOut,W,FS,Rs) :-
     X\==Y,                                                    % If two vars and different then
     Subst1 = vble(X)/vble(Y),                                 % some subst needed
     compose(Subst1,SigmaIn,SigmaMid),                         % Compose new substitution with old one
